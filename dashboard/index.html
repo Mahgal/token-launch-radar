@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Launch Radar — radar-2: every pre-token protocol, ranked by implied launch value</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="radar-dot" aria-hidden="true"></span><span class="brand-name">TOKEN LAUNCH RADAR</span><span class="brand-model">radar-2 · comps-calibrated</span></div>
+  <p class="tagline">Every pre-token protocol in the sealed DefiLlama snapshot, ranked by what its launch would be worth — and how to farm it.</p>
+  <div class="stats" id="stats"></div>
+  <nav class="tabs" id="tabs" aria-label="Views">
+    <button type="button" data-view="board" class="active">Board</button>
+    <button type="button" data-view="live">Live tokens</button>
+    <button type="button" data-view="model">The model</button>
+  </nav>
+</header>
+<section class="controls" id="controls" aria-label="Board controls">
+  <input id="q" type="search" placeholder="Search name or slug…" aria-label="Search name or slug" autocomplete="off">
+  <select id="cat" aria-label="Category"><option value="all">All categories</option></select>
+  <select id="chain" aria-label="Chain"><option value="all">All chains</option></select>
+  <select id="sort" aria-label="Sort by">
+    <option value="implied">Sort: implied value</option>
+    <option value="tvl">Sort: TVL</option>
+    <option value="growth">Sort: 7-day change</option>
+    <option value="age">Sort: age</option>
+  </select>
+  <label class="check"><input id="watchlist" type="checkbox"> Watchlist only</label>
+</section>
+<main id="board" tabindex="-1" aria-busy="true"></main>
+<footer class="foot">
+  <p>Data: the sealed snapshot — DefiLlama protocols at or above $5,000,000 TVL, fetched 2026-11-14; watchlist floor $50,000,000. Implied values are this entry's model claims, not a prediction that a token launches, and not make.fun's. A protocol "records no token" when its DefiLlama record carries none; it may still have one the record does not carry.</p>
+  <p>Model radar-2: implied = TVL × category comps multiple × growth × maturity. See <b>The model</b> for the constants, the comparables and the exclusions. No network: every byte on this page comes from the data file beside it.</p>
+</footer>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

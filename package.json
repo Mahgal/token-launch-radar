@@ -1,0 +1,1 @@
+{"description":"Token Launch Radar (radar-2): every farmable pre-token protocol in the sealed DefiLlama snapshot, ranked by implied launch value priced from live-token comparables — with a farm plan for each one.","engines":{"node":">=22.18.0"},"license":"MIT","name":"token-launch-radar","private":true,"scripts":{"start":"node main.ts"},"type":"module","version":"1.0.0"}
