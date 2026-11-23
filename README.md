@@ -35,7 +35,7 @@ No protocol name is ever special-cased; the same function scores every row. The 
 - `main.ts` — the program: reads `/input/snapshot.json`, writes `/output/board.json`, `/output/data.js`, copies `dashboard/` and `screenshots/`, writes `/output/dossier.json` with the vendored make.fun library.
 - `lib/model.ts` — the radar-2 model: snapshot parsing, comparables, implied values, farm plans, board validation.
 - `vendor/makefun-board.ts` — make.fun's dossier library, copied byte for byte from the competition kit.
-- `dashboard/` — the static page (index.html, app.css, app.js): sortable/filterable board, a detail view for every protocol with the value arithmetic shown, live-token view, model page. No network, no links out.
+- `dashboard/` — the static page (index.html, app.css, app.js): a market-state strip (total implied value, ranked TVL, median 7-day change, breadth, top gainer), a sortable/filterable board, movers (top gainers/losers, biggest dollar swings) and new-listing views, a detail view for every protocol with the value arithmetic shown, live-token view, model page. No network, no links out.
 - `screenshots/` — the three screenshots the entry hands in: the board, a protocol's detail view, a filtered view.
 
 ## Screenshots

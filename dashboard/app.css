@@ -78,3 +78,27 @@ tbody tr:last-child td{border-bottom:0}
 .foot{color:var(--dim);font-size:13px;margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
 .foot p{margin:6px 0}
 .empty{padding:34px;text-align:center;color:var(--muted)}
+/* ---- market strip: the whole market at a glance ---- */
+.market{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+@media(max-width:900px){.market{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:560px){.market{grid-template-columns:repeat(2,1fr)}}
+.mkt{background:var(--chip);border:1px solid var(--line);border-radius:9px;padding:8px 11px;text-align:left;min-width:0}
+button.mkt:hover{border-color:var(--line2)}
+.mkt .lbl{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mkt .big{display:block;font-size:18px;font-weight:750;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mkt .sub2{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mkt .up{color:var(--green)} .mkt .down{color:var(--red)}
+.bread{height:5px;border-radius:3px;overflow:hidden;display:flex;margin-top:6px;background:#1a2836}
+.bread i{display:block;height:100%}
+.bread .g{background:var(--green)} .bread .r{background:var(--red)}
+/* ---- section headings + mover tables ---- */
+.sect{margin:0 0 10px}
+.sect h2{font-size:18px}
+.sect p{color:var(--muted);font-size:13px;margin:4px 0 0}
+.movers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.movers{grid-template-columns:1fr}}
+.movers .full{grid-column:1/-1}
+.mini{font-size:13px}
+.mini td{padding:7px 10px}
+.mini .name{font-size:14px}
+.pct{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}

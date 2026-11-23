@@ -279,6 +279,120 @@
     main.appendChild(wrap);
   }
 
+  // ---------- market strip: the whole market at a glance ----------
+  function renderMarket() {
+    var box = document.getElementById('market');
+    box.innerHTML = '';
+    var rows = DATA.rows;
+    var totalImplied = rows.reduce(function (n, r) { return n + r.implied_value_usd; }, 0);
+    var totalTvl = rows.reduce(function (n, r) { return n + r.tvl_usd; }, 0);
+    var changes = rows.map(function (r) { return r.change_7d; })
+      .filter(function (c) { return c !== null && c !== undefined; })
+      .sort(function (a, b) { return a - b; });
+    var median = changes.length ? changes[Math.floor(changes.length / 2)] : null;
+    var up = rows.filter(function (r) { return r.change_7d !== null && r.change_7d > 0; }).length;
+    var down = rows.filter(function (r) { return r.change_7d !== null && r.change_7d < 0; }).length;
+    var flat = rows.length - up - down;
+    var gainer = rows.slice().sort(function (a, b) {
+      return (b.change_7d === null ? -1e9 : b.change_7d) - (a.change_7d === null ? -1e9 : a.change_7d);
+    })[0];
+    function tile(label, big, sub, cls) {
+      var t = el('div', { class: 'mkt' },
+        el('span', { class: 'lbl', text: label }),
+        el('span', { class: 'big' + (cls ? ' ' + cls : ''), text: big }),
+        sub ? el('span', { class: 'sub2', text: sub }) : null);
+      box.appendChild(t);
+      return t;
+    }
+    tile('Total implied value', fmtUsd(totalImplied), 'all ' + rows.length + ' ranked rows');
+    tile('Ranked TVL', fmtUsd(totalTvl), 'TVL with no token behind it');
+    tile('Median 7d', fmtPct(median), 'across the ranked board', median !== null && median >= 0 ? 'up' : 'down');
+    var breadth = tile('Breadth · 7d', up + ' up / ' + down + ' down', flat + ' flat or no data');
+    breadth.appendChild(el('div', { class: 'bread' },
+      el('i', { class: 'g', style: 'width:' + (100 * up / rows.length) + '%' }),
+      el('i', { class: 'r', style: 'width:' + (100 * down / rows.length) + '%' })));
+    box.appendChild(el('button', { class: 'mkt', type: 'button', onclick: function () { openDetail(gainer.slug); } },
+      el('span', { class: 'lbl', text: 'Top gainer · 7d' }),
+      el('span', { class: 'big up', text: gainer.name }),
+      el('span', { class: 'sub2', text: fmtPct(gainer.change_7d) + ' · TVL ' + fmtUsd(gainer.tvl_usd) + ' — open' })));
+  }
+
+  // ---------- movers ----------
+  function moverTable(rows, last) {
+    var table = el('table', { class: 'mini' });
+    table.appendChild(el('thead', {}, el('tr', {},
+      el('th', { text: '#' }), el('th', { text: 'Protocol' }), el('th', { class: 'num', text: 'TVL' }),
+      el('th', { class: 'num', text: '7d' }), el('th', { class: 'num', text: last === 'swing' ? '$ swing' : 'Implied' }))));
+    var tbody = el('tbody', {});
+    rows.forEach(function (r) {
+      var swing = r.tvl_usd * (r.change_7d === null ? 0 : r.change_7d) / 100;
+      tbody.appendChild(el('tr', { onclick: function () { openDetail(r.slug); } },
+        el('td', { class: 'rank', text: String(r.rank) }),
+        el('td', {}, el('span', { class: 'name', text: r.name }),
+          watchSet[r.slug] ? el('span', { class: 'badge', text: 'WATCHLIST' }) : null),
+        el('td', { class: 'num', text: fmtUsd(r.tvl_usd) }),
+        el('td', { class: 'num pct ' + (r.change_7d === null ? 'mut' : r.change_7d >= 0 ? 'pos' : 'neg'), text: fmtPct(r.change_7d) }),
+        el('td', { class: 'num ' + (last === 'swing' ? (swing >= 0 ? 'pos' : 'neg') : 'val'),
+          text: last === 'swing' ? (swing >= 0 ? '+' : '−') + fmtUsd(Math.abs(swing)) : fmtUsd(r.implied_value_usd) })));
+    });
+    table.appendChild(tbody);
+    return table;
+  }
+  function renderMovers() {
+    main.innerHTML = '';
+    main.appendChild(el('div', { class: 'sect' },
+      el('h2', { text: 'Movers — 7-day TVL change' }),
+      el('p', { text: 'The snapshot\u2019s own figures, across the ' + DATA.rows.length + ' ranked rows. A move is what the market did; the model prices growth clamped to +120%, so a +4,448% week still scores as +120%. Click a row to open its detail.' })));
+    var withChange = DATA.rows.filter(function (r) { return r.change_7d !== null && r.change_7d !== undefined; });
+    var byChange = withChange.slice().sort(function (a, b) { return b.change_7d - a.change_7d; });
+    var byDollar = DATA.rows.slice()
+      .map(function (r) { return { r: r, d: Math.abs(r.tvl_usd * (r.change_7d === null ? 0 : r.change_7d) / 100) }; })
+      .sort(function (a, b) { return b.d - a.d; }).slice(0, 8)
+      .map(function (x) { return x.r; });
+    var grid = el('div', { class: 'movers' });
+    var gainers = el('div', { class: 'card' }, el('h3', { text: 'Top gainers · 7d' }));
+    gainers.appendChild(moverTable(byChange.slice(0, 10), 'implied'));
+    var losers = el('div', { class: 'card' }, el('h3', { text: 'Top losers · 7d' }));
+    losers.appendChild(moverTable(byChange.slice(-10).reverse(), 'implied'));
+    var swings = el('div', { class: 'card full' }, el('h3', { text: 'Biggest dollar swings — TVL gained or lost in the week' }));
+    swings.appendChild(moverTable(byDollar, 'swing'));
+    grid.appendChild(gainers);
+    grid.appendChild(losers);
+    grid.appendChild(swings);
+    main.appendChild(grid);
+  }
+
+  // ---------- new listings ----------
+  function renderNew() {
+    main.innerHTML = '';
+    main.appendChild(el('div', { class: 'sect' },
+      el('h2', { text: 'New — the most recently tracked launches' }),
+      el('p', { text: '\u201CNew\u201D means newly tracked by DefiLlama, not newly launched — a protocol can run for years before it appears here. Click a row to open its detail.' })));
+    var rows = DATA.rows.filter(function (r) { return r.listed_at; })
+      .sort(function (a, b) { return b.listed_at.localeCompare(a.listed_at); }).slice(0, 20);
+    var nodate = DATA.rows.filter(function (r) { return !r.listed_at; }).length;
+    var table = el('table', {});
+    table.appendChild(el('thead', {}, el('tr', {},
+      el('th', { text: 'Listed' }), el('th', { text: 'Protocol' }), el('th', { text: 'Category' }),
+      el('th', { class: 'num', text: 'TVL' }), el('th', { class: 'num', text: 'Age' }),
+      el('th', { class: 'num', text: 'Implied value' }))));
+    var tbody = el('tbody', {});
+    rows.forEach(function (r) {
+      tbody.appendChild(el('tr', { onclick: function () { openDetail(r.slug); } },
+        el('td', { class: 'mut', text: r.listed_at }),
+        el('td', {}, el('span', { class: 'name', text: r.name }),
+          watchSet[r.slug] ? el('span', { class: 'badge', text: 'WATCHLIST' }) : null,
+          el('div', { class: 'slug', text: r.slug })),
+        el('td', {}, el('span', { class: 'chip', text: r.category || '—' })),
+        el('td', { class: 'num', text: fmtUsd(r.tvl_usd) }),
+        el('td', { class: 'num mut', text: fmtAge(r.age_days) }),
+        el('td', { class: 'num val', text: fmtUsd(r.implied_value_usd) })));
+    });
+    table.appendChild(tbody);
+    main.appendChild(table);
+    main.appendChild(el('p', { class: 'count', text: 'Showing the 20 most recently tracked of ' + DATA.rows.length + ' ranked rows · ' + nodate + ' rows carry no listing date.' }));
+  }
+
   // ---------- live ----------
   function renderLive() {
     main.innerHTML = '';
@@ -352,6 +466,8 @@
     document.getElementById('controls').style.display = state.view === 'board' && !state.selected ? '' : 'none';
     if (state.view === 'live') renderLive();
     else if (state.view === 'model') renderModel();
+    else if (state.view === 'movers') renderMovers();
+    else if (state.view === 'new') renderNew();
     else if (state.selected) renderDetail();
     else renderBoard();
   }
@@ -381,6 +497,7 @@
 
   readHash();
   renderStats();
+  renderMarket();
   fillSelects();
   bind();
   render();
