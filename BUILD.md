@@ -20,3 +20,35 @@ Kit: make.fun skill v1.5.274, kit downloaded 2026-11-23 14:51 UTC from https://m
 
 - 2026-11-23 14:51 UTC: kit downloaded, RULES.txt + requirements + starter read. Snapshot: 758 protocols, 342 pre-token, watchlist 40, floor $50M. Calibration: rankable 198 rows (40 watchlist + 60 ≥$50M + 138 below floor); global median mcap/TVL **0.2138** (128 live; AUTOfinance carries mcap_usd −1, a missing-data sentinel, and is excluded by the mcap > 0 filter — a first Python pass that trusted truthiness gave 0.2049 over 129, which was wrong); change_7d median −8.22%, range −72.7%…+4448% (clamped); age median 418d.
 - 2026-11-23 ~15:00 UTC: wrote lib/model.ts (radar-2), main.ts, dashboard/ (index.html, app.css, app.js), README.md, .gitignore; vendor/makefun-board.ts copied byte-for-byte from the kit (sha256 9ca51b6e…); LICENSE copied from kit starter (MIT).
+- 2026-11-23 07:04 UTC: repo created + first push. https://github.com/Mahgal/token-launch-radar, commit fd9bb04c7b6afa6b62634cd5e163823428752e2b (API readback match; topics makefun,ai-agents,bounties,trading; homepage https://make.fun/bounty/token-radar-01). Gate mirror 7/7 PASS, kit check 4 pass (only transcripts_present open), tsc clean, determinism out1==out2.
+- **Award pass v2 (2026-11-23 ~15:10 UTC, user: build to win, not just to submit)**: dashboard rebuilt as a trading terminal — market strip on every view (total implied $3.77B, ranked TVL $20.71B, median 7d −3.75%, breadth 56 up / 140 down with stacked bar, top gainer Shift DeFi +4448.47% clickable to its detail), new tabs Movers (top 10 gainers / top 10 losers / biggest dollar swings, all clickable) and New (20 most recently tracked, listed date + age), 5 tabs total. Model untouched (same 198 rows, same board.json). Dashboard source 29,597 → 38,592 bytes (dossier text 38,858 < 65,536 cap). New screenshots re-taken at 1440×900 and visually checked (board / detail / filtered + movers / new). Gate mirror 7/7 PASS again, determinism re-verified, kit check 4 pass (only transcripts_present open). Second commit cb9567b1113dbd7f1dd85434cbdfa91eba3411b2 (API readback: latest on main).
+- Wallet (user-confirmed 2026-11-23 15:10, Binance Web3 My Wallet 1 Solana): 24iPJy4Dr4SKc47nzw5Mnhknrv7FgpUWFXJKWJP58jhQ. User binds it on the make.fun profile page; submission waits for binding. No keypair was created, stored or used by this build (red line kept).
+- Standing rule (MEMORY.md, user 2026-11-23 15:10): every make.fun competition from now on gets an entry — new competition → build immediately (kit flow + program + screenshots + repo + bundle, to submittable state); submission waits for wallet binding.
+
+## Bundle handoff (for the top-level agent — do NOT run from this subagent session)
+
+bundle --dry-run (2026-11-23 07:09 UTC) found 3 sessions: this session bca29d51-b395-4b01-aba3-953876f9060c (79 turns kept), plus 6181c94f-232b-4685-8837-d5458abb157b and a2968cff-ac61-4bb8-9179-6f41401880ed (the two sessions that wrote ~/workspace/github-factory/2026-11-23/push.py, which this build read). It refuses to write until the run record is complete; the subagent's own usage rows are written only once this run completes (muse.db COUNT confirms: bca29d51 = 0 rows now; parent cff1f545 = 15,256 rows; 6181c94f = 4; a2968cff = 1). The parent session file is 815 MB (>128 MiB --parent-session cap, >256 MiB search cap), so the bundle must run from the top-level agent's own session, after this run completes. Run, from the kit dir:
+
+```
+cd ~/workspace/makefun/token-radar-01-kit
+node cli/makefun.mjs bundle --repo ~/workspace/makefun/token-radar-01 \
+  --system-prompt ~/workspace/system/system_prompt.md \
+  --effort default --provider meta --mcp none \
+  --out ~/workspace/makefun/token-radar-01-bundle/transcripts.tar.gz \
+  --redact "Borjigin Mahgal" --redact "Mahagala Boerzhijin" \
+  --redact "imahgal@gmail.com" --redact "admin@khaan.si" --redact "+1 9787565566" \
+  --muse-usage <usage-file> --prompt-file <user-words-file> \
+  --prompt-origin handed-off --prompt-via "subagent brief from the main agent"
+```
+
+- --muse-usage: run this SELECT in muse.db after this run completes (page by created_at if >200 rows; bundle drops pre-build rows itself), one JSON object per line, unchanged:
+  `SELECT u.agent_id AS agent_id, u.message_id AS message_id, u.created_at AS created_at, u.input_tokens AS input_tokens, u.output_tokens AS output_tokens, a.model AS model FROM agent.agent_message_token_usage u JOIN agent.agents a ON a.agent_id = u.agent_id WHERE u.agent_id IN ('bca29d51-b395-4b01-aba3-953876f9060c', '6181c94f-232b-4685-8837-d5458abb157b', 'a2968cff-ac61-4bb8-9179-6f41401880ed', 'cff1f545-16b6-48b7-ac7c-4520a836c454') ORDER BY u.created_at DESC LIMIT 500`
+- --prompt-file: the user's exact words that started the token-radar work (in the parent session, ~14:12 CST 2026-11-23) — word for word, never the agent hand-off brief.
+- --mcp none: this build used no MCP servers (shell + file tools + web search only). --provider meta: the model is Muse Spark 1.3, served by Meta (recorded model id ipnext/avocado-5.17-v2 is the same model per the kit help).
+- After bundling, re-run: `node cli/makefun.mjs check --kit . --repo ~/workspace/makefun/token-radar-01 --transcripts ~/workspace/makefun/token-radar-01-bundle/transcripts.tar.gz` and expect transcripts_present to pass.
+
+## Submission (still waiting — user steps)
+
+1. User binds wallet 24iPJy4Dr4SKc47nzw5Mnhknrv7FgpUWFXJKWJP58jhQ on the make.fun profile page (signs it themselves).
+2. User mints an af_ API key on make.fun (their step — never asked for or stored by the agent).
+3. Submit with the bundle + repo URL + commit cb9567b1113dbd7f1dd85434cbdfa91eba3411b2 (or a later HEAD if the entry is polished again), before 2026-12-14T10:00:00Z.
