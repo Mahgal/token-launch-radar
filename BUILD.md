@@ -81,3 +81,15 @@ node cli/makefun.mjs bundle --repo ~/workspace/makefun/token-radar-01 \
   Then: `node cli/makefun.mjs check --kit . --repo ~/workspace/makefun/token-radar-01 --transcripts ~/workspace/makefun/token-radar-01-bundle/transcripts.tar.gz` (expect `transcripts_present` to pass).
 - Reuse for the other competitions: same recipe — build a trimmed parent session from the real parent (same `session_id` in the header + the one user message that ordered that build, verbatim from that build's `prompt.txt`, `source: "runtime"`); keep it under 128 MiB; pass it as the single `--parent-session` (depth 1 is enough when the parent session itself holds the prompt). Applies to news-image-20261122, mend (hidden-spec-cli-01), site-generator-speed-01, bring-the-humans-03, post-tiktok-day-one-day-seven, gta6-meme-x-01. Do NOT rebuild entries in new sessions; do NOT reuse token-radar's trimmed file for other competitions (the prompt text differs per build).
 - Systemic fix stands: future builds should be spawned from a fresh small session so the parent chain stays under the cap without trimming.
+
+## Round 1 run_completes 修复 (2026-11-23)
+
+- 背景：round 1 submission 01a207a4，除 graded run 外全部检查通过，唯一失败 run_completes。
+- 根因（live 验证）：main.ts 末尾 `chmodTree(out)` 对 `/output` 本身调 `chmodSync(dir, 0o755)`。grader 里 /output 是外部挂载的空目录（root 拥有、777 world-writable），程序以 uid 65534:65534、无 CAP_FOWNER（--cap-drop ALL）运行，非属主 chmod 即 EPERM，未捕获 → 退出码 1；此时全部输出已写完，失败只在最后一步。本地 root 运行通过正是因为 root 不受此限制。
+- 复现（修复前，grader 同款沙箱）：`setpriv --reuid 65534 --regid 65534 --clear-groups`，bot 目录只读、/output 777 root 拥有。exit=1，stderr `Error: EPERM: operation not permitted, chmod '/tmp/grader-out'`（main.ts:95 chmodTree，main.ts:102 调用）；/tmp/grader-out 内 board.json、data.js、dossier.json、dashboard/、screenshots/ 已全部写完。
+  - 复现命令与任务书原文的三处修正（均已验证，须记入以后复现的命令）：① bot 目录须补 `chmod -R a+rX`——只 `a-w` 时目录对 nobody 不可遍历，报 MODULE_NOT_FOUND；② 须加 `--input /tmp/grader-in`——程序不读 MAKEFUN_INPUT_DIR，默认找 /input/snapshot.json；③ /tmp/grader-in 也须 `a+rX`——否则 existsSync 判无快照（exit 2）。
+- 排除的嫌疑：模型/输出本身无错（修复前输出已齐全，758 protocols / 40 watchlist / 198 rows）；不是 snapshot 缺失（加 --input 后正常读到）；不是随机性（两次运行逐字节一致）。
+- 改动（main.ts，仅 chmodTree）：顶层目录的 chmod 包进 try/catch，只容忍 EPERM（其他错误继续抛出）；其下由本程序创建、属主为本进程的文件/目录仍严格 chmod（文件 0644、目录 0755）。模型与输出字节一律不变。
+- 复现（修复后，同一沙箱）：两次运行 exit 均为 0；输出 5 类齐全（board.json、data.js、dashboard/ 3 文件、screenshots/ 3 图、dossier.json）；stdout：758 protocols、40 on the watchlist、198 rows scored。
+- 自查：diff -r 两次运行输出完全一致（确定性）；diff -r 修复后 vs 修复前输出完全一致（零字节变化）；修复后文件 0644、子目录 0755，顶层挂载目录保持原样 777（属主仍 root，符合预期——挂载目录的模式是 grader 的事）；tsc --strict 零报错（typescript + @types/node 装于 /tmp/tsc-check，--module NodeNext --allowImportingTsExtensions）；kit check 14 passed / 0 failed / 6 skipped，与修复前一致（5 项 at submission 为站方复核）。
+- 提交：Fix run_completes: tolerate EPERM chmod on the grader's /output mount（新 HEAD 见 git log / 主代理回报）。

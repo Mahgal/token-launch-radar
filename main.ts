@@ -91,15 +91,24 @@ for (const name of shots) {
 writeFileSync(join(out, 'dossier.json'), buildDossier(out, { text_max_bytes: TEXT_MAX_BYTES, screenshots: SCREENSHOT_CAPS, dashboard: { max_files: 400, max_bytes: 4_194_304 } }));
 
 // The grader collects the outputs as another user: leave every file 0644 and every directory 0755.
-function chmodTree(dir: string): void {
-  chmodSync(dir, 0o755);
+// The top level is the exception: the grader mounts /output as an external
+// directory owned by another user (root-owned, world-writable), and chmod on
+// that mount is EPERM for the unprivileged runner (uid 65534, no CAP_FOWNER).
+// That one failure is tolerated; everything below the top level is created
+// by this process, so it stays strictly chmodded.
+function chmodTree(dir: string, tolerateTop = false): void {
+  try {
+    chmodSync(dir, 0o755);
+  } catch (err) {
+    if (!tolerateTop || (err as NodeJS.ErrnoException).code !== 'EPERM') throw err;
+  }
   for (const name of readdirSync(dir)) {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) chmodTree(path);
     else chmodSync(path, 0o644);
   }
 }
-chmodTree(out);
+chmodTree(out, true);
 
 process.stdout.write(
   `token radar: ${snapshot.protocols.length} protocols, ${snapshot.watchlist.length} on the watchlist, ${board.length} rows scored\n` +
