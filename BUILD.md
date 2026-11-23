@@ -52,3 +52,32 @@ node cli/makefun.mjs bundle --repo ~/workspace/makefun/token-radar-01 \
 1. User binds wallet 24iPJy4Dr4SKc47nzw5Mnhknrv7FgpUWFXJKWJP58jhQ on the make.fun profile page (signs it themselves).
 2. User mints an af_ API key on make.fun (their step — never asked for or stored by the agent).
 3. Submit with the bundle + repo URL + commit cb9567b1113dbd7f1dd85434cbdfa91eba3411b2 (or a later HEAD if the entry is polished again), before 2026-12-14T10:00:00Z.
+
+## Bundle blocker (2026-11-23 15:15–15:31, still open)
+
+- First bundle run failed: the 3 build sessions carry no parent chain; tool demands `--parent-session` up to the session where the user typed the prompt (parent = main session cff1f545).
+- Second run failed: parent session file is 816,395,265 bytes, over the tool's 134,217,728-byte (128 MiB) cap on one context session.
+- Third run (gzipped parent) failed: the .gz is 301,631,105 bytes, still over the 128 MiB cap (cap is measured on the stored file). Gzip also warned the live session file changed while zipping.
+- Next step: read the kit source for exactly what the parent-session check validates, to see whether a trimmed parent session (only the turns that ordered this build) passes. Do NOT rebuild the entry in a new session without checking first.
+- Systemic lesson: never spawn a make.fun build from the giant main session again — a build parented to a fresh small session (e.g. the daily watch cron's own run session) keeps the parent chain under the cap. The 7 builds spawned 2026-11-23 15:22–15:24 are all parented to cff1f545 and will hit the same wall at bundle time; plan the fix once, apply to all.
+- Deadline is 2026-12-14T10:00:00Z, so this is not urgent today; the wallet binding + af_ key are the gating user steps anyway.
+- RESOLVED in principle (2026-11-23, kit source read, no bundle run yet — see gate note below). The 128 MiB cap is per file (`MAX_CONTEXT_SESSION_BYTES = 128 * 1024 * 1024`, makefun.mjs line 36293; refused at line 377046), and the chain check is content-based, not whole-file: `parentChainOf` / `chainWalkOf` / `linkFault` (lines 133355–133400) only require that a carried parent session at increasing depth *holds the run's prompt* (`holdsPrompt`: its opening or a later user message normalizes equal to the `--prompt-file` text, lines 133300–133320, `normalizePrompt` = NFC + collapse whitespace + trim) and is not itself an evidence session and does not repeat a link. A `--parent-session` file is attached as role `ancestor`, depth by order given (`parentSessionTakes`, line 319212), and `cutMuseAppLog` keeps it whole when it has no repo-naming tool calls, no spawns, no writes (line 319804: `first === -1 && !spawns.length && !written2.length` → `whole2(null, 0)`).
+- Trimmed parent session (written 2026-11-23): `~/workspace/makefun/token-radar-01-bundle/parent-session-trimmed.jsonl` (390 bytes) — header (`session_header` v1, `session_id`/`agent_id` `cff1f545-16b6-48b7-ac7c-4520a836c454`) + the single ordering user message `这种赚钱的我们也跑` (verbatim from `prompt.txt`, user typed ~14:12 CST 2026-11-23; timestamps approximate to that time). It is a faithful excerpt of the real parent session, not the original file; the 816 MB original was never read. Independent simulation of the kit's rules (own Python re-implementation, `/tmp/check-trimmed-parent.py`): 16/16 PASS (header valid, user message non-injected with `source: "runtime"`, prompt normalizes equal, `cutMuseAppLog` keeps whole, `linkFault` null, `turnsOf` = 1, chain reaches at depth 1). Simulation is NOT the kit's own verdict — the real bundle run + kit check are still to be done by the parent agent.
+- Gate note: the kit `.mjs` failed an execution-risk check in this subagent's session, so this subagent did NOT run `node makefun.mjs` (bundle or check). User approved this kit's use 2026-11-23 15:37 ("两个都继续", gta6-01 + mend kits); the parent agent decides whether that covers the bundle run or asks the user again.
+- Run (from the token-radar kit dir; `token-radar-01-kit/cli/makefun.mjs` is byte-identical to the gta6 kit, sha256 `89e25243…`):
+  ```
+  cd ~/workspace/makefun/token-radar-01-kit
+  node cli/makefun.mjs bundle --repo ~/workspace/makefun/token-radar-01 \
+    --system-prompt ~/workspace/system/system_prompt.md \
+    --effort default --provider meta --mcp none \
+    --out ~/workspace/makefun/token-radar-01-bundle/transcripts.tar.gz \
+    --redact "Borjigin Mahgal" --redact "Mahagala Boerzhijin" \
+    --redact "imahgal@gmail.com" --redact "admin@khaan.si" --redact "+1 9787565566" \
+    --muse-usage ~/workspace/makefun/token-radar-01-bundle/usage.jsonl \
+    --prompt-file ~/workspace/makefun/token-radar-01-bundle/prompt.txt \
+    --prompt-origin handed-off --prompt-via "subagent brief from the main agent" \
+    --parent-session ~/workspace/makefun/token-radar-01-bundle/parent-session-trimmed.jsonl
+  ```
+  Then: `node cli/makefun.mjs check --kit . --repo ~/workspace/makefun/token-radar-01 --transcripts ~/workspace/makefun/token-radar-01-bundle/transcripts.tar.gz` (expect `transcripts_present` to pass).
+- Reuse for the other competitions: same recipe — build a trimmed parent session from the real parent (same `session_id` in the header + the one user message that ordered that build, verbatim from that build's `prompt.txt`, `source: "runtime"`); keep it under 128 MiB; pass it as the single `--parent-session` (depth 1 is enough when the parent session itself holds the prompt). Applies to news-image-20261122, mend (hidden-spec-cli-01), site-generator-speed-01, bring-the-humans-03, post-tiktok-day-one-day-seven, gta6-meme-x-01. Do NOT rebuild entries in new sessions; do NOT reuse token-radar's trimmed file for other competitions (the prompt text differs per build).
+- Systemic fix stands: future builds should be spawned from a fresh small session so the parent chain stays under the cap without trimming.
